@@ -51,8 +51,8 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         setLogLevel('debug');
         
@@ -379,70 +379,6 @@
         window.editItem = editItem;
         window.editSubstitute = editSubstitute;
 
-        // Firebase Initialization
-        function initializeFirebase() {
-            try {
-                if (Object.keys(firebaseConfig).length > 0 && !app) {
-                    app = initializeApp(firebaseConfig);
-                    auth = getAuth(app);
-                    db = getFirestore(app);
-
-                    onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            userId = user.uid;
-                            document.getElementById('auth-info').textContent = `Logged in as: ${userId}`;
-                            document.getElementById('login-status').style.display = 'block';
-                            document.getElementById('loadingIndicator').style.display = 'none';
-                            
-                            // Attach a real-time listener to Firestore
-                            if (unsubscribe) unsubscribe(); // Detach old listener
-                            const q = query(collection(db, `/artifacts/${appId}/users/${userId}/items`));
-                            unsubscribe = onSnapshot(q, (querySnapshot) => {
-                                items = [];
-                                querySnapshot.forEach((doc) => {
-                                    items.push({ id: doc.id, ...doc.data() });
-                                });
-                                renderItems();
-                                showMessage('Data synced!', 'success');
-                            }, (error) => {
-                                console.error("Error fetching data:", error);
-                                showMessage('Error fetching data. Please refresh.', 'error');
-                            });
-
-                        } else {
-                            userId = null;
-                            document.getElementById('auth-info').textContent = 'Not logged in';
-                            document.getElementById('login-status').style.display = 'block';
-                            document.getElementById('loadingIndicator').style.display = 'none';
-                            items = [];
-                            renderItems();
-                            console.log("No user signed in. Signing in anonymously...");
-                            try {
-                                await signInAnonymously(auth);
-                            } catch (error) {
-                                console.error("Error signing in anonymously:", error);
-                            }
-                        }
-                    });
-
-                    // Use the custom token if available
-                    if (initialAuthToken) {
-                        signInWithCustomToken(auth, initialAuthToken).catch((error) => {
-                            console.error("Error signing in with custom token:", error);
-                        });
-                    }
-                } else {
-                    console.error("Firebase config is missing.");
-                    showMessage('Firebase configuration error. Cannot save data.', 'error');
-                    document.getElementById('loadingIndicator').style.display = 'none';
-                }
-            } catch (error) {
-                console.error("Firebase initialization failed:", error);
-                showMessage('Firebase initialization failed. Check console for details.', 'error');
-                document.getElementById('loadingIndicator').style.display = 'none';
-            }
-        }
-
         // Edit an item
         async function editItem(itemId) {
             const item = items.find(i => i.id === itemId);
@@ -470,8 +406,72 @@
             }
         }
         
-        // Initial setup on window load
-        window.onload = initializeFirebase;
+        // Firebase Initialization
+        // We initialize Firebase immediately to avoid the 'no-app' error
+        let isFirebaseInitialized = false;
+        if (Object.keys(firebaseConfig).length > 0) {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                isFirebaseInitialized = true;
+                
+                // Use a listener to handle authentication state changes
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        // User is authenticated
+                        userId = user.uid;
+                        document.getElementById('auth-info').textContent = `Logged in as: ${userId}`;
+                        document.getElementById('login-status').style.display = 'block';
+                        loadingIndicator.style.display = 'none';
+
+                        // Attach a real-time listener to Firestore data
+                        if (unsubscribe) unsubscribe(); // Detach old listener
+                        const q = query(collection(db, `/artifacts/${appId}/users/${userId}/items`));
+                        unsubscribe = onSnapshot(q, (querySnapshot) => {
+                            items = [];
+                            querySnapshot.forEach((doc) => {
+                                items.push({ id: doc.id, ...doc.data() });
+                            });
+                            renderItems();
+                            showMessage('Data synced!', 'success');
+                        }, (error) => {
+                            console.error("Error fetching data:", error);
+                            showMessage('Error fetching data. Please refresh.', 'error');
+                        });
+                    } else {
+                        // No user is signed in, sign in anonymously
+                        userId = null;
+                        document.getElementById('auth-info').textContent = 'Not logged in';
+                        document.getElementById('login-status').style.display = 'block';
+                        loadingIndicator.style.display = 'none';
+                        items = [];
+                        renderItems();
+                        console.log("No user signed in. Signing in anonymously...");
+                        try {
+                            await signInAnonymously(auth);
+                        } catch (error) {
+                            console.error("Error signing in anonymously:", error);
+                        }
+                    }
+                });
+
+                // Use the custom token if available to sign in
+                if (initialAuthToken) {
+                    signInWithCustomToken(auth, initialAuthToken).catch((error) => {
+                        console.error("Error signing in with custom token:", error);
+                    });
+                }
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                showMessage('Firebase initialization failed. Check console for details.', 'error');
+                loadingIndicator.style.display = 'none';
+            }
+        } else {
+            console.error("Firebase config is missing.");
+            showMessage('Firebase configuration error. Cannot save data.', 'error');
+            loadingIndicator.style.display = 'none';
+        }
     </script>
 
     <div class="container bg-white rounded-2xl shadow-xl p-6 sm:p-8 w-full">
