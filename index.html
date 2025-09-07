@@ -457,8 +457,17 @@
             }
         }
 
-        // Start the initialization process when the window loads
-        window.onload = initializeFirebaseAndAuth;
+        // New function to wait for global variables to be defined before initializing
+        function waitForGlobalVariables() {
+            if (typeof __firebase_config !== 'undefined' && typeof __initial_auth_token !== 'undefined' && typeof __app_id !== 'undefined') {
+                initializeFirebaseAndAuth();
+            } else {
+                setTimeout(waitForGlobalVariables, 50);
+            }
+        }
+
+        // Start the process on window load
+        window.onload = waitForGlobalVariables;
     </script>
 
     <div class="container bg-white rounded-2xl shadow-xl p-6 sm:p-8 w-full">
