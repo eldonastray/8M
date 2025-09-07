@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Purchase Cost Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 960px;
+        }
+        .custom-checkbox {
+            position: relative;
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid #ccc;
+            background-color: #fff;
+            transition: all 0.2s ease;
+        }
+        .custom-checkbox:hover {
+            border-color: #4f46e5;
+        }
+        .custom-checkbox.checked {
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+        .custom-checkbox.checked::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 8px;
+            height: 8px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4 sm:p-6 md:p-8">
+
+    <div class="container bg-white rounded-2xl shadow-xl p-6 sm:p-8 w-full">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center text-gray-800 mb-6">House Purchase Cost Calculator</h1>
+        <p class="text-center text-gray-600 mb-8">Add your items and substitutes to track your budget.</p>
+        
+        <!-- Input Form -->
+        <form id="itemForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div class="col-span-1 sm:col-span-2 lg:col-span-1">
+                <label for="itemName" class="block text-sm font-medium text-gray-700">Item Name</label>
+                <input type="text" id="itemName" name="itemName" required
+                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 transition duration-200 ease-in-out hover:border-indigo-400">
+            </div>
+            <div class="col-span-1 sm:col-span-2 lg:col-span-1">
+                <label for="itemLink" class="block text-sm font-medium text-gray-700">Purchase Link</label>
+                <input type="url" id="itemLink" name="itemLink"
+                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 transition duration-200 ease-in-out hover:border-indigo-400">
+            </div>
+            <div class="col-span-1">
+                <label for="itemCost" class="block text-sm font-medium text-gray-700">Cost (£)</label>
+                <input type="number" id="itemCost" name="itemCost" step="0.01" min="0" required
+                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 transition duration-200 ease-in-out hover:border-indigo-400">
+            </div>
+            <div class="col-span-1">
+                <label for="itemDelivery" class="block text-sm font-medium text-gray-700">Delivery (£)</label>
+                <input type="number" id="itemDelivery" name="itemDelivery" step="0.01" min="0" value="0.00"
+                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 transition duration-200 ease-in-out hover:border-indigo-400">
+            </div>
+            <div class="col-span-1">
+                <label for="itemRoom" class="block text-sm font-medium text-gray-700">Room</label>
+                <input type="text" id="itemRoom" name="itemRoom" required list="roomList"
+                       class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 transition duration-200 ease-in-out hover:border-indigo-400">
+                <datalist id="roomList"></datalist>
+            </div>
+            <div class="col-span-full flex items-end">
+                <button type="submit" class="w-full h-10 inline-flex items-center justify-center rounded-lg border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 ease-in-out">
+                    Add Item
+                </button>
+            </div>
+        </form>
+
+        <!-- Totals Display -->
+        <div class="flex flex-col sm:flex-row justify-between items-center text-center sm:text-left bg-gray-50 rounded-lg p-4 mb-8 shadow-inner">
+            <div class="mb-4 sm:mb-0">
+                <p class="text-sm text-gray-500">Total Primary Cost</p>
+                <p id="totalPrimaryCost" class="text-2xl font-semibold text-gray-900">£0.00</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Total Cheapest Alternative</p>
+                <p id="totalCheapestAlternative" class="text-2xl font-semibold text-gray-900">£0.00</p>
+            </div>
+        </div>
+
+        <!-- Breakdown by Room -->
+        <div id="roomBreakdownContainer" class="mb-8">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Cost Breakdown by Room</h3>
+            <div id="roomBreakdownList" class="space-y-2">
+                <!-- Room totals will be dynamically added here -->
+            </div>
+        </div>
+
+        <!-- Items List -->
+        <div id="itemsContainer" class="space-y-4">
+            <!-- Items will be dynamically added here -->
+        </div>
+
+    </div>
+
+    <div id="messageBox" class="fixed bottom-4 left-1/2 -translate-x-1/2 p-3 rounded-lg text-white text-sm opacity-0 transition-opacity duration-300" style="display:none;"></div>
+
+    <script>
+        // Custom message box to replace alert()
+        function showMessage(message, type = 'info') {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            messageBox.style.opacity = '1';
+
+            if (type === 'error') {
+                messageBox.style.backgroundColor = '#dc2626'; // bg-red-600
+            } else if (type === 'success') {
+                messageBox.style.backgroundColor = '#16a34a'; // bg-green-600
+            } else {
+                messageBox.style.backgroundColor = '#4f46e5'; // bg-indigo-600
+            }
+
+            setTimeout(() => {
+                messageBox.style.opacity = '0';
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
+
+        // --- Core Application Logic ---
+        let items = [];
+
+        const itemForm = document.getElementById('itemForm');
+        const itemsContainer = document.getElementById('itemsContainer');
+        const totalPrimaryCostEl = document.getElementById('totalPrimaryCost');
+        const totalCheapestAlternativeEl = document.getElementById('totalCheapestAlternative');
+        const roomBreakdownList = document.getElementById('roomBreakdownList');
+        const roomList = document.getElementById('roomList');
+
+        function calculateTotals() {
+            let primaryTotal = 0;
+            let cheapestAlternativeTotal = 0;
+            const roomTotals = {};
+
+            items.forEach(item => {
+                // Only include selected items in the total
+                if (item.isSelected) {
+                    const itemFullCost = item.cost + item.deliveryCost;
+                    primaryTotal += itemFullCost;
+                    
+                    // Calculate cheapest alternative for the item
+                    let minSubCost = itemFullCost;
+                    if (item.substitutes.length > 0) {
+                        const selectedSubstitutes = item.substitutes.filter(sub => sub.isSelected);
+                        if (selectedSubstitutes.length > 0) {
+                            const substituteCosts = selectedSubstitutes.map(sub => sub.cost + sub.deliveryCost);
+                            const cheapestSub = Math.min(...substituteCosts);
+                            minSubCost = Math.min(itemFullCost, cheapestSub);
+                        }
+                    }
+                    cheapestAlternativeTotal += minSubCost;
+
+                    // Calculate room breakdown
+                    const roomName = item.room || 'Unassigned';
+                    if (!roomTotals[roomName]) {
+                        roomTotals[roomName] = 0;
+                    }
+                    roomTotals[roomName] += itemFullCost;
+                }
+            });
+
+            totalPrimaryCostEl.textContent = `£${primaryTotal.toFixed(2)}`;
+            totalCheapestAlternativeEl.textContent = `£${cheapestAlternativeTotal.toFixed(2)}`;
+
+            renderRoomBreakdown(roomTotals);
+        }
+
+        function renderRoomBreakdown(totals) {
+            roomBreakdownList.innerHTML = '';
+            for (const room in totals) {
+                if (totals.hasOwnProperty(room)) {
+                    const roomEl = document.createElement('div');
+                    roomEl.classList.add('flex', 'justify-between', 'items-center', 'p-3', 'rounded-lg', 'bg-gray-100', 'shadow-sm');
+                    roomEl.innerHTML = `
+                        <p class="font-medium text-gray-700">${room}</p>
+                        <p class="font-semibold text-gray-900">£${totals[room].toFixed(2)}</p>
+                    `;
+                    roomBreakdownList.appendChild(roomEl);
+                }
+            }
+        }
+
+        function updateRoomDatalist() {
+            const uniqueRooms = [...new Set(items.map(item => item.room))];
+            roomList.innerHTML = '';
+            uniqueRooms.forEach(room => {
+                const option = document.createElement('option');
+                option.value = room;
+                roomList.appendChild(option);
+            });
+        }
+
+        function renderItems() {
+            itemsContainer.innerHTML = '';
+            items.forEach((item, index) => {
+                const itemEl = document.createElement('div');
+                itemEl.classList.add('bg-white', 'rounded-xl', 'shadow-md', 'p-6', 'border', 'border-gray-200');
+                
+                let substitutesHtml = item.substitutes.map((sub, subIndex) => `
+                    <div class="flex items-center justify-between bg-gray-50 rounded-lg p-3 mt-2 shadow-inner">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="sub-${index}-${subIndex}" class="hidden" ${sub.isSelected ? 'checked' : ''} onchange="toggleSubstituteSelection(${index}, ${subIndex})">
+                            <label for="sub-${index}-${subIndex}" class="custom-checkbox ${sub.isSelected ? 'checked' : ''}"></label>
+                            <div>
+                                <p class="text-gray-700 text-sm">Substitute: <span class="font-medium">${sub.name}</span></p>
+                                <p class="text-gray-500 text-xs">Cost: <span class="font-medium">£${sub.cost.toFixed(2)}</span> + Delivery: <span class="font-medium">£${sub.deliveryCost.toFixed(2)}</span></p>
+                                ${sub.link ? `<a href="${sub.link}" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-600 underline truncate block max-w-xs">View Product</a>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="editSubstitute(${index}, ${subIndex})" class="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                            </button>
+                            <button onclick="deleteSubstitute(${index}, ${subIndex})" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.234 21H7.766a2 2 0 01-1.936-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+                itemEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-start gap-2">
+                            <input type="checkbox" id="item-${index}" class="hidden" ${item.isSelected ? 'checked' : ''} onchange="toggleItemSelection(${index})">
+                            <label for="item-${index}" class="custom-checkbox mt-1 ${item.isSelected ? 'checked' : ''}"></label>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-800">${item.name}</h2>
+                                <p class="text-gray-600 mb-2">Room: <span class="font-medium">${item.room}</span></p>
+                                <p class="text-gray-600 mb-2">Cost: <span class="font-medium">£${item.cost.toFixed(2)}</span> + Delivery: <span class="font-medium">£${item.deliveryCost.toFixed(2)}</span></p>
+                                ${item.link ? `<a href="${item.link}" target="_blank" class="text-sm text-indigo-600 hover:text-indigo-700 underline block mb-4">View Product</a>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="editItem(${index})" class="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                            </button>
+                            <button onclick="deleteItem(${index})" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.234 21H7.766a2 2 0 01-1.936-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Substitutes Section -->
+                    <div id="substitutes-${index}" class="mt-4 border-t border-gray-200 pt-4">
+                        <p class="text-sm font-semibold text-gray-800 mb-2">Substitutes:</p>
+                        <div class="space-y-2">
+                            ${substitutesHtml}
+                        </div>
+                        
+                        <form onsubmit="event.preventDefault(); addSubstitute(event, ${index});" class="mt-4 flex flex-col sm:flex-row gap-2">
+                            <input type="text" placeholder="Substitute Name" required
+                                   class="flex-1 rounded-lg border-gray-300 shadow-sm sm:text-sm p-2">
+                            <input type="url" placeholder="Link"
+                                   class="flex-1 rounded-lg border-gray-300 shadow-sm sm:text-sm p-2">
+                            <input type="number" step="0.01" min="0" placeholder="Cost (£)" required
+                                   class="flex-1 rounded-lg border-gray-300 shadow-sm sm:text-sm p-2">
+                            <input type="number" step="0.01" min="0" value="0.00" placeholder="Delivery (£)"
+                                   class="flex-1 rounded-lg border-gray-300 shadow-sm sm:text-sm p-2">
+                            <button type="submit" class="shrink-0 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 transition-colors">
+                                Add
+                            </button>
+                        </form>
+                    </div>
+                `;
+                itemsContainer.appendChild(itemEl);
+            });
+            calculateTotals();
+            updateRoomDatalist();
+        }
+
+        itemForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('itemName').value;
+            const link = document.getElementById('itemLink').value;
+            const cost = parseFloat(document.getElementById('itemCost').value);
+            const deliveryCost = parseFloat(document.getElementById('itemDelivery').value);
+            const room = document.getElementById('itemRoom').value.toLowerCase();
+
+            const newItem = {
+                name,
+                link,
+                cost,
+                deliveryCost,
+                room,
+                isSelected: true,
+                substitutes: []
+            };
+
+            items.push(newItem);
+            renderItems();
+            itemForm.reset();
+            showMessage('Item added successfully!', 'success');
+        });
+
+        // Add a substitute to an item
+        function addSubstitute(e, itemIndex) {
+            const form = e.target;
+            const name = form.children[0].value;
+            const link = form.children[1].value;
+            const cost = parseFloat(form.children[2].value);
+            const deliveryCost = parseFloat(form.children[3].value);
+
+            if (isNaN(cost) || isNaN(deliveryCost) || name.trim() === '') {
+                showMessage('Please enter a valid name, cost, and delivery cost for the substitute.', 'error');
+                return;
+            }
+
+            items[itemIndex].substitutes.push({
+                name,
+                link,
+                cost,
+                deliveryCost,
+                isSelected: true
+            });
+
+            renderItems();
+            showMessage('Substitute added successfully!', 'success');
+        }
+        
+        // Delete an item
+        function deleteItem(index) {
+            items.splice(index, 1);
+            renderItems();
+            showMessage('Item deleted.', 'info');
+        }
+
+        // Delete a substitute
+        function deleteSubstitute(itemIndex, subIndex) {
+            items[itemIndex].substitutes.splice(subIndex, 1);
+            renderItems();
+            showMessage('Substitute deleted.', 'info');
+        }
+
+        // Edit an item (simple version: populates form for re-submission)
+        function editItem(index) {
+            const item = items[index];
+            document.getElementById('itemName').value = item.name;
+            document.getElementById('itemLink').value = item.link;
+            document.getElementById('itemCost').value = item.cost;
+            document.getElementById('itemDelivery').value = item.deliveryCost;
+            document.getElementById('itemRoom').value = item.room;
+            deleteItem(index); // Delete the old one, user re-submits to add the new one.
+        }
+
+        // Edit a substitute (simple version: populates form for re-submission)
+        function editSubstitute(itemIndex, subIndex) {
+            const substitute = items[itemIndex].substitutes[subIndex];
+            const form = document.getElementById(`substitutes-${itemIndex}`).querySelector('form');
+            form.children[0].value = substitute.name;
+            form.children[1].value = substitute.link;
+            form.children[2].value = substitute.cost;
+            form.children[3].value = substitute.deliveryCost;
+            deleteSubstitute(itemIndex, subIndex); // Delete the old one, user re-submits to add the new one.
+        }
+
+        function toggleItemSelection(index) {
+            items[index].isSelected = !items[index].isSelected;
+            renderItems();
+        }
+
+        function toggleSubstituteSelection(itemIndex, subIndex) {
+            items[itemIndex].substitutes[subIndex].isSelected = !items[itemIndex].substitutes[subIndex].isSelected;
+            renderItems();
+        }
+        
+        // Initial render
+        renderItems();
+    </script>
+</body>
+</html>
