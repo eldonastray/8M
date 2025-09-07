@@ -57,9 +57,9 @@
         setLogLevel('debug');
         
         // Global variables provided by the Canvas environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
+        let appId = null;
+        let firebaseConfig = null;
+        let initialAuthToken = null;
         
         let app = null;
         let auth = null;
@@ -254,7 +254,7 @@
         async function addItem(e) {
             e.preventDefault();
             if (!userId) {
-                showMessage("Please wait, authenticating user...", 'info');
+                showMessage("Authentication not ready. Please wait a moment.", 'info');
                 return;
             }
 
@@ -405,73 +405,76 @@
                 await deleteSubstitute(itemId, subIndex);
             }
         }
-        
-        // Firebase Initialization
-        // We initialize Firebase immediately to avoid the 'no-app' error
-        let isFirebaseInitialized = false;
-        if (Object.keys(firebaseConfig).length > 0) {
+
+        // New async function to handle Firebase initialization and authentication
+        async function initializeFirebaseAndAuth() {
             try {
+                // Safely access and parse the global variables
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
+                
+                if (Object.keys(firebaseConfig).length === 0) {
+                    throw new Error("Firebase config is missing.");
+                }
+
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
-                isFirebaseInitialized = true;
                 
-                // Use a listener to handle authentication state changes
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        // User is authenticated
-                        userId = user.uid;
-                        document.getElementById('auth-info').textContent = `Logged in as: ${userId}`;
-                        document.getElementById('login-status').style.display = 'block';
-                        loadingIndicator.style.display = 'none';
-
-                        // Attach a real-time listener to Firestore data
-                        if (unsubscribe) unsubscribe(); // Detach old listener
-                        const q = query(collection(db, `/artifacts/${appId}/users/${userId}/items`));
-                        unsubscribe = onSnapshot(q, (querySnapshot) => {
-                            items = [];
-                            querySnapshot.forEach((doc) => {
-                                items.push({ id: doc.id, ...doc.data() });
-                            });
-                            renderItems();
-                            showMessage('Data synced!', 'success');
-                        }, (error) => {
-                            console.error("Error fetching data:", error);
-                            showMessage('Error fetching data. Please refresh.', 'error');
-                        });
-                    } else {
-                        // No user is signed in, sign in anonymously
-                        userId = null;
-                        document.getElementById('auth-info').textContent = 'Not logged in';
-                        document.getElementById('login-status').style.display = 'block';
-                        loadingIndicator.style.display = 'none';
-                        items = [];
-                        renderItems();
-                        console.log("No user signed in. Signing in anonymously...");
-                        try {
-                            await signInAnonymously(auth);
-                        } catch (error) {
-                            console.error("Error signing in anonymously:", error);
+                const authPromise = new Promise(async (resolve, reject) => {
+                    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+                        unsubscribeAuth(); // Detach the listener after the first state change
+                        if (user) {
+                            userId = user.uid;
+                        } else {
+                            // User is not signed in, try to sign in anonymously
+                            try {
+                                await signInAnonymously(auth);
+                                userId = auth.currentUser.uid;
+                            } catch (error) {
+                                reject(error);
+                            }
                         }
+                        resolve(userId);
+                    });
+
+                    // If an initial token is available, sign in with it immediately
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken).catch(reject);
                     }
                 });
+                
+                await authPromise;
+                
+                document.getElementById('auth-info').textContent = `Logged in as: ${userId}`;
+                document.getElementById('login-status').style.display = 'block';
+                loadingIndicator.style.display = 'none';
 
-                // Use the custom token if available to sign in
-                if (initialAuthToken) {
-                    signInWithCustomToken(auth, initialAuthToken).catch((error) => {
-                        console.error("Error signing in with custom token:", error);
+                // Attach a real-time listener to Firestore data
+                if (unsubscribe) unsubscribe(); // Detach old listener
+                const q = query(collection(db, `/artifacts/${appId}/users/${userId}/items`));
+                unsubscribe = onSnapshot(q, (querySnapshot) => {
+                    items = [];
+                    querySnapshot.forEach((doc) => {
+                        items.push({ id: doc.id, ...doc.data() });
                     });
-                }
+                    renderItems();
+                    showMessage('Data synced!', 'success');
+                }, (error) => {
+                    console.error("Error fetching data:", error);
+                    showMessage('Error fetching data. Please refresh.', 'error');
+                });
+
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
                 showMessage('Firebase initialization failed. Check console for details.', 'error');
                 loadingIndicator.style.display = 'none';
             }
-        } else {
-            console.error("Firebase config is missing.");
-            showMessage('Firebase configuration error. Cannot save data.', 'error');
-            loadingIndicator.style.display = 'none';
         }
+
+        // Start the initialization process when the window loads
+        window.onload = initializeFirebaseAndAuth;
     </script>
 
     <div class="container bg-white rounded-2xl shadow-xl p-6 sm:p-8 w-full">
