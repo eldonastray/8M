@@ -411,42 +411,26 @@
             try {
                 // Safely access and parse the global variables
                 appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                const configString = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
                 initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
                 
-                if (Object.keys(firebaseConfig).length === 0) {
+                if (!configString) {
                     throw new Error("Firebase config is missing.");
                 }
 
+                firebaseConfig = JSON.parse(configString);
+                
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
                 
-                const authPromise = new Promise(async (resolve, reject) => {
-                    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-                        unsubscribeAuth(); // Detach the listener after the first state change
-                        if (user) {
-                            userId = user.uid;
-                        } else {
-                            // User is not signed in, try to sign in anonymously
-                            try {
-                                await signInAnonymously(auth);
-                                userId = auth.currentUser.uid;
-                            } catch (error) {
-                                reject(error);
-                            }
-                        }
-                        resolve(userId);
-                    });
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
 
-                    // If an initial token is available, sign in with it immediately
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken).catch(reject);
-                    }
-                });
-                
-                await authPromise;
-                
+                userId = auth.currentUser.uid;
                 document.getElementById('auth-info').textContent = `Logged in as: ${userId}`;
                 document.getElementById('login-status').style.display = 'block';
                 loadingIndicator.style.display = 'none';
