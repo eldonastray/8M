@@ -60,6 +60,7 @@
         let appId = null;
         let firebaseConfig = null;
         let initialAuthToken = null;
+        let isAuthReady = false;
         
         let app = null;
         let auth = null;
@@ -77,6 +78,7 @@
         const roomBreakdownList = document.getElementById('roomBreakdownList');
         const roomList = document.getElementById('roomList');
         const loadingIndicator = document.getElementById('loadingIndicator');
+        const addItemButton = document.getElementById('addItemButton');
 
         // Custom message box to replace alert()
         function showMessage(message, type = 'info') {
@@ -253,7 +255,7 @@
         // Add an item to Firestore
         async function addItem(e) {
             e.preventDefault();
-            if (!userId) {
+            if (!isAuthReady) {
                 showMessage("Authentication not ready. Please wait a moment.", 'info');
                 return;
             }
@@ -431,9 +433,12 @@
                 }
 
                 userId = auth.currentUser.uid;
+                isAuthReady = true; // Set the flag after successful authentication
                 document.getElementById('auth-info').textContent = `Logged in as: ${userId}`;
                 document.getElementById('login-status').style.display = 'block';
                 loadingIndicator.style.display = 'none';
+                addItemButton.textContent = 'Add Item';
+                addItemButton.disabled = false;
 
                 // Attach a real-time listener to Firestore data
                 if (unsubscribe) unsubscribe(); // Detach old listener
@@ -454,6 +459,8 @@
                 console.error("Firebase initialization failed:", error);
                 showMessage('Firebase initialization failed. Check console for details.', 'error');
                 loadingIndicator.style.display = 'none';
+                addItemButton.textContent = 'Error';
+                addItemButton.disabled = true;
             }
         }
 
@@ -512,8 +519,8 @@
                 <datalist id="roomList"></datalist>
             </div>
             <div class="col-span-full flex items-end">
-                <button type="submit" class="w-full h-10 inline-flex items-center justify-center rounded-lg border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 ease-in-out">
-                    Add Item
+                <button type="submit" id="addItemButton" disabled class="w-full h-10 inline-flex items-center justify-center rounded-lg border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 ease-in-out">
+                    Loading...
                 </button>
             </div>
         </form>
